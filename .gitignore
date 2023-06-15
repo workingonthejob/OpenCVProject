@@ -1,0 +1,5 @@
+*.ini
+*.log
+**/__pycache__
+**.sublime-workspace
+*.sqlite3
