@@ -12,12 +12,53 @@ WINDOW_NAME = 'Foscam Feed'
 CAPTURE_ALL_TRANSFORMATION = False
 
 # cap = cv2.VideoCapture("example2.mp4")
-cap = cv2.VideoCapture()
+cap = cv2.VideoCapture("")
 # used to record the time when we processed last frame
 prev_frame_time = 0
 
 # used to record the time at which we processed current frame
 new_frame_time = 0
+
+
+class Rectangle(object):
+    def __init__(self, x, y):
+        # x and y should be a tuple of the start
+        # and end points
+        self.x = x
+        self.y = y
+        self.start_x = self.x[0]
+        self.start_y = self.x[1]
+        self.end_x = self.y[0]
+        self.end_y = self.y[1]
+        self.length = abs(self.end_x - self.start_x)
+        self.width = abs(self.end_y - self.start_y)
+
+    """
+    Given another Rectangle return a boolean of whether the two
+    rectangles overlap.
+    """
+
+    def overlaps(self, rectangle):
+        top_left = False
+        top_right = False
+        bottom_left = False
+        bottom_right = False
+        if self.start_x < rectangle.end_x:
+            top_left = True
+        if self.end_x > rectangle.start_x:
+            bottom_right = True
+        if self.start_y < rectangle.end_y:
+            bottom_left = True
+        if self.end_y > rectangle.start_y:
+            top_right = True
+
+        if top_left and top_right and bottom_left and bottom_right:
+            return True
+        return False
+
+    def area(self):
+        return self.length * self.width
+
 
 def draw_text(img,
               text,
@@ -59,14 +100,14 @@ ignore everything inside of it.
 show_ignored - Visually show the space being ignored.
 """
 def ignore_spot(img, start_point, end_point, show_ignored=False):
-    start_x = start_point[0]
-    start_y = start_point[1]
-    end_x = end_point[0]
-    end_y = end_point[1]
-
     if show_ignored:
-        cv2.rectangle(frame1, start_point, end_point, (255, 0, 195), 2)
+        cv2.rectangle(img, start_point, end_point, (255, 0, 195), 2)
 
+"""
+Return a boolean. True if the start and end points are inside
+the ignore start and ignore points. Partial overlaps are not
+ignored.
+"""
 def in_ignore_spot(start_point, end_point, ignore_start, ignore_end):
     start_x = start_point[0]
     start_y = start_point[1]
@@ -79,10 +120,15 @@ def in_ignore_spot(start_point, end_point, ignore_start, ignore_end):
 
     if start_x >= ignore_start_x and start_y >= ignore_start_y:
         if end_x <= ignore_end_x and end_y <= ignore_end_y:
-            # log.debug('In ignore area.')
+            log.debug('In ignore area.')
             return True
     return False
 
+def calculate_fps():
+    new_frame_time = time.time()
+    fps = 1 / (new_frame_time - prev_frame_time)
+    prev_frame_time = new_frame_time
+    return str(int(fps))
 
 """
 Capture footage of all the transformations..
@@ -106,7 +152,7 @@ out = cv2.VideoWriter("output.mp4", fourcc, 5.0, (1280, 720))
 
 ret, frame1 = cap.read()
 ret, frame2 = cap.read()
-print(frame1.shape)
+# print(frame1.shape)
 
 lastDateTime = None
 
@@ -140,15 +186,32 @@ try:
             # Don't make the logs noisy with redundant records of movement.
             if lastDateTime is None or lastDateTime != datetimeNow:
                 if not in_ignore_area:
-                    log.info("Movement at {}".format(datetimeNow))
+                    log.info(f'Movement at {datetimeNow}')
                     lastDateTime = datetimeNow
 
         cv2.putText(frame1, fps, (10, 470), cv2.FONT_HERSHEY_PLAIN, 2, (100, 255, 0), 2, cv2.LINE_AA)
 
+
+        rect1 = Rectangle((200, 100), (325, 270))
+        rect2 = Rectangle((100, 50), (350, 170))
+
         ignore_spot(frame1,
-                    start_point=(460, 390),
+                    start_point=(460, 385),
                     end_point=(640, 480),
                     show_ignored=False)
+
+        ignore_spot(frame1,
+                    start_point=rect1.x,
+                    end_point=rect1.y,
+                    show_ignored=True)
+
+        ignore_spot(frame1,
+                    start_point=rect2.x,
+                    end_point=rect2.y,
+                    show_ignored=True)
+
+        cv2.circle(frame1, rect1.x, radius=5, color=(252, 186, 3), thickness=-1)
+        cv2.circle(frame1, rect1.y, radius=5, color=(252, 186, 3), thickness=-1)
 
         draw_text(img=frame1,
                   text=datetimeNow,
