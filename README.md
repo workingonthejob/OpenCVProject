@@ -8,6 +8,10 @@ General Hardware Notes
   * Updated the firmware to the latest version.
   * Camera must support RTSP or something that gives you access to the live feed.
 
+## Configuration Notes
+
+  * Camera/Router needs to be set up to have reserve IPs.
+
 Install the Python libraries:
 
 `pip install -r requirements.txt`
